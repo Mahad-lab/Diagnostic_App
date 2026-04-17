@@ -17,3 +17,5 @@ build/
 
 # Ignore specific secrets or data
 *.xlsx
+
+.env
