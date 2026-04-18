@@ -1,0 +1,19 @@
+[project]
+name = "backend"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "fastapi[standard]>=0.136.0",
+    "pandas>=3.0.2",
+    "psycopg2-binary>=2.9.11",
+    "pydantic>=2.13.2",
+    "python-dotenv>=1.2.2",
+    "python-jose>=3.5.0",
+    "sqlalchemy>=2.0.49",
+    "uvicorn>=0.44.0",
+]
+
+[tool.fastapi]
+app = "app/main:app"
