@@ -65,6 +65,16 @@ def _deduct_stock_atomic(key: str, qty: int) -> None:
         db.commit()
 
 
+def _stock_csv_template() -> str:
+    import io
+    buf = io.StringIO()
+    pd.DataFrame(columns=[
+        "key", "generic", "brand", "dosage_form", 
+        "dose","expiry", "unit", "stock_qty",
+    ]).to_csv(buf, index=False)
+    return buf.getvalue()
+
+
 def _upsert_stock(df: pd.DataFrame) -> None:
     """Insert or update stock rows using PostgreSQL ON CONFLICT."""
     with get_db() as db:
@@ -788,8 +798,19 @@ def _pharmacy_tab() -> None:
 def _admin_tab() -> None:
     st.subheader("Admin Controls")
 
-    st.markdown("#### 📦 Upload Stock CSV")
-    uploaded = st.file_uploader("Upload stock CSV", type=["csv"])
+    st.markdown("#### 📄 Download CSV Template")
+    template_csv = _stock_csv_template()
+    st.download_button(
+        "📥 Download Standard Stock CSV Template",
+        data=template_csv,
+        file_name="stock_template.csv",
+        mime="text/csv",
+    )
+    st.caption("Columns: key, generic, brand, dosage_form, dose, expiry, unit, stock_qty")
+
+    st.markdown("---")
+    st.markdown("#### 📦 Upload Standard Stock CSV")
+    uploaded = st.file_uploader("Upload stock CSV (standard format)", type=["csv"], key="std_csv")
     if uploaded:
         try:
             df = pd.read_csv(uploaded)
