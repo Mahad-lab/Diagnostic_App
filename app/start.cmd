@@ -1,1 +1,1 @@
-uv run streamlit run check.py 
+uv run streamlit run main.py
