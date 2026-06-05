@@ -3,12 +3,15 @@ Database configuration and ORM models for Medical Camp EMR (PostgreSQL + SQLAlch
 """
 
 from contextlib import contextmanager
+from dotenv import load_dotenv
 from sqlalchemy import create_engine, Column, Integer, String, Text, Float, DateTime, Date, ForeignKey, text
 from sqlalchemy.orm import sessionmaker, declarative_base, Session
 from sqlalchemy.pool import QueuePool
 from sqlalchemy.sql import func
 import streamlit as st
 import os
+
+load_dotenv()
 
 Base = declarative_base()
 
