@@ -59,7 +59,7 @@ class Stock(Base):
     brand = Column(String(255))
     dosage_form = Column(String(255))
     dose = Column(String(100))
-    expiry = Column(Date)
+    expiry = Column(Date, nullable=True)
     unit = Column(String(50))
     stock_qty = Column(Integer, default=0)
 
