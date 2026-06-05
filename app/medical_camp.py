@@ -5,6 +5,7 @@ SQLAlchemy + PostgreSQL — full implementation
 import os
 import re
 import random
+import time
 
 import pandas as pd
 import streamlit as st
@@ -849,6 +850,36 @@ def _admin_tab() -> None:
                     st.rerun()
                 except Exception as e:
                     st.error(f"Error clearing stock: {e}")
+
+    st.markdown("---")
+    st.markdown("#### 🗑️ Delete All Patients & Visits")
+    with st.container():
+        del_all_patients_password = st.text_input(
+            "Enter admin password to delete all patients",
+            type="password",
+            key="del_all_patients_pw",
+        )
+        if st.button("⚠️ DELETE ALL PATIENTS", type="primary", key="del_all_patients_btn"):
+            if del_all_patients_password != "secret":
+                st.error("Incorrect password. Action denied.")
+            else:
+                progress = st.progress(0, text="Deleting all patients and visits...")
+                try:
+                    progress.progress(30, text="Deleting visits...")
+                    with get_db() as db:
+                        db.execute(text("DELETE FROM visits"))
+                        db.commit()
+                    progress.progress(60, text="Deleting patients...")
+                    with get_db() as db:
+                        db.execute(text("DELETE FROM patients"))
+                        db.commit()
+                    progress.progress(100, text="Done!")
+                    time.sleep(0.5)
+                    progress.empty()
+                    st.success("✅ All patients and their visits deleted.")
+                except Exception as e:
+                    progress.empty()
+                    st.error(f"Error deleting patients: {e}")
 
     st.markdown("---")
     st.markdown("#### 📥 Export All Stock Data")
