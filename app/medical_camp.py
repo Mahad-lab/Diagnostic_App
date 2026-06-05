@@ -829,6 +829,48 @@ def _admin_tab() -> None:
             st.error(f"Error reading CSV: {e}")
 
     st.markdown("---")
+    st.markdown("#### 🗑️ Clear All Stock Data")
+    with st.container():
+        clear_password = st.text_input(
+            "Enter admin password to clear all stock",
+            type="password",
+            key="clear_stock_pw",
+        )
+        if st.button("⚠️ DELETE ALL STOCK", type="primary", key="clear_stock_btn"):
+            if clear_password != "secret":
+                st.error("Incorrect password. Action denied.")
+            else:
+                try:
+                    with get_db() as db:
+                        db.execute(text("DELETE FROM stock"))
+                        db.commit()
+                    st.session_state["stock_df"] = _load_stock()
+                    st.success("✅ All stock data cleared.")
+                    st.rerun()
+                except Exception as e:
+                    st.error(f"Error clearing stock: {e}")
+
+    st.markdown("---")
+    st.markdown("#### 📥 Export All Stock Data")
+    col_dl1, col_dl2 = st.columns([2, 6])
+    with col_dl1:
+        stock_df_dl = _load_stock()
+        if not stock_df_dl.empty:
+            csv_data = stock_df_dl.to_csv(index=False).encode("utf-8")
+            st.download_button(
+                "💾 Download All Stock as CSV",
+                data=csv_data,
+                file_name="all_stock_data.csv",
+                mime="text/csv",
+                key="download_stock_csv",
+                type="primary",
+            )
+        else:
+            st.info("No stock data available to download.")
+    with col_dl2:
+        st.caption("Exports the full stock table from the database as a CSV file.")
+
+    st.markdown("---")
     st.markdown("#### 📊 Current Stock")
     stock_df = _load_stock()
     if stock_df.empty:
