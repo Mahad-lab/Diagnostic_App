@@ -8,6 +8,7 @@ dependencies = [
     "mysql-connector-python>=9.6.0",
     "pandas>=3.0.2",
     "psycopg2-binary>=2.9.11",
+    "python-dotenv",
     "sqlalchemy>=2.0.49",
     "streamlit>=1.56.0",
 ]
