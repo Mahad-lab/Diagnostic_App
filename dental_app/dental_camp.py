@@ -11,6 +11,15 @@ import streamlit as st
 
 from database import get_db, get_engine, DentalVisit
 
+# Cache patient data to prevent page reloading on input
+@st.cache_data(ttl=300)  # Cache for 5 minutes
+def _get_patients_df():
+    """Fetch patient list with caching to prevent reruns."""
+    return pd.read_sql(
+        "SELECT patient_id, patient_name, age, gender FROM patients ORDER BY patient_id DESC",
+        get_engine(),
+    )
+
 IMAGE_FOLDER = os.path.join(os.path.dirname(os.path.dirname(__file__)), "dental_images")
 
 
@@ -58,10 +67,7 @@ def run_dental_app() -> None:
 def _assessment_tab() -> None:
     st.subheader("New Dental Visit")
 
-    patients_df = pd.read_sql(
-        "SELECT patient_id, patient_name, age, gender FROM patients ORDER BY patient_id DESC",
-        get_engine(),
-    )
+    patients_df = _get_patients_df()  # Use cached function
 
     if patients_df.empty:
         st.info("No patients registered. Register patients via the main EMR app first.")
@@ -84,111 +90,117 @@ def _assessment_tab() -> None:
     c2.info(f"Age: {p_data['age']}")
     c3.info(f"Gender: {p_data['gender']}")
 
-    # 1. History & Complaints
-    st.markdown("### 1. History & Complaints")
-    col_a, col_b = st.columns(2)
-    pc  = col_a.text_area("Presenting Complaint",             key=f"pc_{pid}")
-    hpc = col_b.text_area("History of Presenting Complaint",  key=f"hpc_{pid}")
-    st.markdown("---")
+    # Wrap all form inputs in st.form() to prevent constant reruns
+    with st.form(key=f"dental_form_{pid}", clear_on_submit=False):
 
-    # 2. Dental History
-    st.markdown("### 2. Dental History")
-    dh_cols    = st.columns(5)
-    la_exp     = dh_cols[0].checkbox("LA Experience?", key=f"la_{pid}")
-    scaling    = dh_cols[1].checkbox("Scaling?",       key=f"sc_{pid}")
-    filling    = dh_cols[2].checkbox("Filling/RCT?",   key=f"fl_{pid}")
-    extract    = dh_cols[3].checkbox("Extraction?",    key=f"ex_{pid}")
-    prosthesis = dh_cols[4].checkbox("Prosthesis?",    key=f"pr_{pid}")
-    st.markdown("---")
+        # 1. History & Complaints
+        st.markdown("### 1. History & Complaints")
+        col_a, col_b = st.columns(2)
+        pc  = col_a.text_area("Presenting Complaint",             key=f"pc_{pid}")
+        hpc = col_b.text_area("History of Presenting Complaint",  key=f"hpc_{pid}")
+        st.markdown("---")
 
-    # 3. Habits & Brushing
-    st.markdown("### 3. Habits & Brushing")
-    h_cols = st.columns(6)
-    habits = {
-        "Smoking": h_cols[0].checkbox("Smoking",   key=f"h_sm_{pid}"),
-        "Gutkha":  h_cols[1].checkbox("Gutkha",    key=f"h_gu_{pid}"),
-        "Naswar":  h_cols[2].checkbox("Naswar",     key=f"h_na_{pid}"),
-        "Pan":     h_cols[3].checkbox("Pan/Betel",  key=f"h_pa_{pid}"),
-        "Mauva":   h_cols[4].checkbox("Mauva",      key=f"h_ma_{pid}"),
-        "Alcohol": h_cols[5].checkbox("Alcohol",    key=f"h_al_{pid}"),
-    }
+        # 2. Dental History
+        st.markdown("### 2. Dental History")
+        dh_cols    = st.columns(5)
+        la_exp     = dh_cols[0].checkbox("LA Experience?", key=f"la_{pid}")
+        scaling    = dh_cols[1].checkbox("Scaling?",       key=f"sc_{pid}")
+        filling    = dh_cols[2].checkbox("Filling/RCT?",   key=f"fl_{pid}")
+        extract    = dh_cols[3].checkbox("Extraction?",    key=f"ex_{pid}")
+        prosthesis = dh_cols[4].checkbox("Prosthesis?",    key=f"pr_{pid}")
+        st.markdown("---")
 
-    b_cols     = st.columns(3)
-    brush_type = b_cols[0].selectbox("Brushing Type", ["Nil", "Finger", "Miswak", "Brush"],          key=f"b_type_{pid}")
-    brush_freq = b_cols[1].selectbox("Frequency",     ["OD (Once)", "BD (Twice)", "TDS (Thrice)"],    key=f"b_freq_{pid}")
-    brush_time = b_cols[2].selectbox("Timing",        ["Morning", "Night", "Both"],                   key=f"b_time_{pid}")
-    st.markdown("---")
+        # 3. Habits & Brushing
+        st.markdown("### 3. Habits & Brushing")
+        h_cols = st.columns(6)
+        habits = {
+            "Smoking": h_cols[0].checkbox("Smoking",   key=f"h_sm_{pid}"),
+            "Gutkha":  h_cols[1].checkbox("Gutkha",    key=f"h_gu_{pid}"),
+            "Naswar":  h_cols[2].checkbox("Naswar",     key=f"h_na_{pid}"),
+            "Pan":     h_cols[3].checkbox("Pan/Betel",  key=f"h_pa_{pid}"),
+            "Mauva":   h_cols[4].checkbox("Mauva",      key=f"h_ma_{pid}"),
+            "Alcohol": h_cols[5].checkbox("Alcohol",    key=f"h_al_{pid}"),
+        }
 
-    # 4. Medical Alert
-    st.markdown("### 4. Medical Alert")
-    med_conditions = [
-        "Diabetes", "Hypertension (BP)", "Heart Disease", "Asthma",
-        "Hepatitis", "Bleeding Disorder", "Pregnancy", "Allergies",
-    ]
-    selected_meds = st.multiselect("Select Positive Findings", med_conditions, key=f"meds_{pid}")
-    st.markdown("---")
+        b_cols     = st.columns(3)
+        brush_type = b_cols[0].selectbox("Brushing Type", ["Nil", "Finger", "Miswak", "Brush"],          key=f"b_type_{pid}")
+        brush_freq = b_cols[1].selectbox("Frequency",     ["OD (Once)", "BD (Twice)", "TDS (Thrice)"],    key=f"b_freq_{pid}")
+        brush_time = b_cols[2].selectbox("Timing",        ["Morning", "Night", "Both"],                   key=f"b_time_{pid}")
+        st.markdown("---")
 
-    # 5. Dentition Chart
-    st.markdown("### 5. Dentition Status (Tooth Chart)")
-    tooth_codes = ["Healthy", "Decayed (D)", "Filled (F)", "Mobile (M)", "BDR", "Missing"]
+        # 4. Medical Alert
+        st.markdown("### 4. Medical Alert")
+        med_conditions = [
+            "Diabetes", "Hypertension (BP)", "Heart Disease", "Asthma",
+            "Hepatitis", "Bleeding Disorder", "Pregnancy", "Allergies",
+        ]
+        selected_meds = st.multiselect("Select Positive Findings", med_conditions, key=f"meds_{pid}")
+        st.markdown("---")
 
-    st.write("**Upper Right (11–18)**")
-    cols_ur  = st.columns(8)
-    ur_status = {
-        str(t): cols_ur[i].selectbox(str(t), tooth_codes, key=f"t_{t}_{pid}", label_visibility="collapsed")
-        for i, t in enumerate(range(18, 10, -1))
-    }
+        # 5. Dentition Chart
+        st.markdown("### 5. Dentition Status (Tooth Chart)")
+        tooth_codes = ["Healthy", "Decayed (D)", "Filled (F)", "Mobile (M)", "BDR", "Missing"]
 
-    st.write("**Upper Left (21–28)**")
-    cols_ul  = st.columns(8)
-    ul_status = {
-        str(t): cols_ul[i].selectbox(str(t), tooth_codes, key=f"t_{t}_{pid}", label_visibility="collapsed")
-        for i, t in enumerate(range(21, 29))
-    }
+        st.write("**Upper Right (11–18)**")
+        cols_ur  = st.columns(8)
+        ur_status = {
+            str(t): cols_ur[i].selectbox(str(t), tooth_codes, key=f"t_{t}_{pid}", label_visibility="collapsed")
+            for i, t in enumerate(range(18, 10, -1))
+        }
 
-    st.write("**Lower Left (31–38)**")
-    cols_ll  = st.columns(8)
-    ll_status = {
-        str(t): cols_ll[i].selectbox(str(t), tooth_codes, key=f"t_{t}_{pid}", label_visibility="collapsed")
-        for i, t in enumerate(range(31, 39))
-    }
+        st.write("**Upper Left (21–28)**")
+        cols_ul  = st.columns(8)
+        ul_status = {
+            str(t): cols_ul[i].selectbox(str(t), tooth_codes, key=f"t_{t}_{pid}", label_visibility="collapsed")
+            for i, t in enumerate(range(21, 29))
+        }
 
-    st.write("**Lower Right (41–48)**")
-    cols_lr  = st.columns(8)
-    lr_status = {
-        str(t): cols_lr[i].selectbox(str(t), tooth_codes, key=f"t_{t}_{pid}", label_visibility="collapsed")
-        for i, t in enumerate(range(48, 40, -1))
-    }
-    st.markdown("---")
+        st.write("**Lower Left (31–38)**")
+        cols_ll  = st.columns(8)
+        ll_status = {
+            str(t): cols_ll[i].selectbox(str(t), tooth_codes, key=f"t_{t}_{pid}", label_visibility="collapsed")
+            for i, t in enumerate(range(31, 39))
+        }
 
-    # 6. Clinical Pictures
-    st.markdown("### 6. Clinical Pictures")
-    cam1, cam2 = st.columns(2)
-    with cam1:
-        st.write("**📸 Pre-Op Picture**")
-        pre_img = st.camera_input("Take Pre-Op Photo", key=f"cam_pre_{pid}")
-    with cam2:
-        st.write("**📸 Post-Op Picture**")
-        post_img = st.camera_input("Take Post-Op Photo", key=f"cam_post_{pid}")
-    st.markdown("---")
+        st.write("**Lower Right (41–48)**")
+        cols_lr  = st.columns(8)
+        lr_status = {
+            str(t): cols_lr[i].selectbox(str(t), tooth_codes, key=f"t_{t}_{pid}", label_visibility="collapsed")
+            for i, t in enumerate(range(48, 40, -1))
+        }
+        st.markdown("---")
 
-    # 7. Diagnosis & Prescription
-    st.markdown("### 7. Diagnosis & Prescription")
-    prov_diag = st.text_input("Provisional Diagnosis", key=f"diag_{pid}")
-    st.markdown("**Write Prescriptions**")
+        # 6. Clinical Pictures
+        st.markdown("### 6. Clinical Pictures")
+        cam1, cam2 = st.columns(2)
+        with cam1:
+            st.write("**📸 Pre-Op Picture**")
+            pre_img = st.camera_input("Take Pre-Op Photo", key=f"cam_pre_{pid}")
+        with cam2:
+            st.write("**📸 Post-Op Picture**")
+            post_img = st.camera_input("Take Post-Op Photo", key=f"cam_post_{pid}")
+        st.markdown("---")
 
-    num_meds = st.number_input("Number of Medicines", min_value=1, max_value=10, value=1, key=f"num_meds_{pid}")
-    med_list = []
-    for i in range(int(num_meds)):
-        c1, c2   = st.columns([3, 2])
-        m_name   = c1.text_input(f"Medicine Name {i + 1}",  placeholder="e.g. Amoxil 500mg", key=f"d_med_{i}_{pid}")
-        m_instr  = c2.text_input(f"Dosage/Instr {i + 1}",   value="1+0+1, 3 Days",             key=f"d_ins_{i}_{pid}")
-        if m_name:
-            med_list.append(f"{m_name} ({m_instr})")
+        # 7. Diagnosis & Prescription
+        st.markdown("### 7. Diagnosis & Prescription")
+        prov_diag = st.text_input("Provisional Diagnosis", key=f"diag_{pid}")
+        st.markdown("**Write Prescriptions**")
 
-    st.write("---")
+        num_meds = st.number_input("Number of Medicines", min_value=1, max_value=10, value=1, key=f"num_meds_{pid}")
+        med_list = []
+        for i in range(int(num_meds)):
+            c1, c2   = st.columns([3, 2])
+            m_name   = c1.text_input(f"Medicine Name {i + 1}",  placeholder="e.g. Amoxil 500mg", key=f"d_med_{i}_{pid}")
+            m_instr  = c2.text_input(f"Dosage/Instr {i + 1}",   value="1+0+1, 3 Days",             key=f"d_ins_{i}_{pid}")
+            if m_name:
+                med_list.append(f"{m_name} ({m_instr})")
 
-    if st.button("💾 Save Dental Visit", type="primary", key=f"save_btn_{pid}"):
+        st.write("---")
+        
+        submit_btn = st.form_submit_button("💾 Save Dental Visit", type="primary", use_container_width=True)
+    
+    # Process form submission
+    if submit_btn:
         pre_filename  = _save_image(pre_img,  pid, "PreOp")
         post_filename = _save_image(post_img, pid, "PostOp")
 
