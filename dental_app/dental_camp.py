@@ -90,6 +90,9 @@ def _assessment_tab() -> None:
     c2.info(f"Age: {p_data['age']}")
     c3.info(f"Gender: {p_data['gender']}")
 
+    # Number of medicines input OUTSIDE form to allow dynamic updates
+    num_meds = st.number_input("Number of Medicines", min_value=1, max_value=10, value=1, key=f"num_meds_{pid}")
+
     # Wrap all form inputs in st.form() to prevent constant reruns
     with st.form(key=f"dental_form_{pid}", clear_on_submit=False):
 
@@ -186,7 +189,6 @@ def _assessment_tab() -> None:
         prov_diag = st.text_input("Provisional Diagnosis", key=f"diag_{pid}")
         st.markdown("**Write Prescriptions**")
 
-        num_meds = st.number_input("Number of Medicines", min_value=1, max_value=10, value=1, key=f"num_meds_{pid}")
         med_list = []
         for i in range(int(num_meds)):
             c1, c2   = st.columns([3, 2])
@@ -201,49 +203,50 @@ def _assessment_tab() -> None:
     
     # Process form submission
     if submit_btn:
-        pre_filename  = _save_image(pre_img,  pid, "PreOp")
-        post_filename = _save_image(post_img, pid, "PostOp")
+        with st.spinner("💾 Saving Dental Visit..."):
+            pre_filename  = _save_image(pre_img,  pid, "PreOp")
+            post_filename = _save_image(post_img, pid, "PostOp")
 
-        full_chart  = {**ur_status, **ul_status, **ll_status, **lr_status}
-        chart_data  = {k: v for k, v in full_chart.items() if v != "Healthy"}
-        chart_json  = json.dumps(chart_data)
-        meds_str    = "; ".join(med_list)
-        med_hist_str = ", ".join(selected_meds)
+            full_chart  = {**ur_status, **ul_status, **ll_status, **lr_status}
+            chart_data  = {k: v for k, v in full_chart.items() if v != "Healthy"}
+            chart_json  = json.dumps(chart_data)
+            meds_str    = "; ".join(med_list)
+            med_hist_str = ", ".join(selected_meds)
 
-        try:
-            with get_db() as db:
-                dental_visit = DentalVisit(
-                    patient_id            = pid,
-                    doctor_name           = "Dentist",
-                    presenting_complaint  = pc,
-                    history_complaint     = hpc,
-                    la_experience         = _yn(la_exp),
-                    scaling               = _yn(scaling),
-                    filling_rct           = _yn(filling),
-                    extraction            = _yn(extract),
-                    prosthesis            = _yn(prosthesis),
-                    smoking               = _yn(habits["Smoking"]),
-                    gutkha                = _yn(habits["Gutkha"]),
-                    naswar                = _yn(habits["Naswar"]),
-                    pan                   = _yn(habits["Pan"]),
-                    mauva                 = _yn(habits["Mauva"]),
-                    alcohol               = _yn(habits["Alcohol"]),
-                    brushing_type         = brush_type,
-                    brushing_freq         = brush_freq,
-                    brushing_timing       = brush_time,
-                    medical_history_notes = med_hist_str,
-                    dentition_status      = chart_json,
-                    provisional_diagnosis = prov_diag,
-                    medicines             = meds_str,
-                    dispensed             = "No",
-                    pre_op_image          = pre_filename,
-                    post_op_image         = post_filename,
-                )
-                db.add(dental_visit)
-                db.commit()
-            st.success("✅ Dental Visit & Images Saved Successfully!")
-        except Exception as e:
-            st.error(f"Error saving: {e}")
+            try:
+                with get_db() as db:
+                    dental_visit = DentalVisit(
+                        patient_id            = pid,
+                        doctor_name           = "Dentist",
+                        presenting_complaint  = pc,
+                        history_complaint     = hpc,
+                        la_experience         = _yn(la_exp),
+                        scaling               = _yn(scaling),
+                        filling_rct           = _yn(filling),
+                        extraction            = _yn(extract),
+                        prosthesis            = _yn(prosthesis),
+                        smoking               = _yn(habits["Smoking"]),
+                        gutkha                = _yn(habits["Gutkha"]),
+                        naswar                = _yn(habits["Naswar"]),
+                        pan                   = _yn(habits["Pan"]),
+                        mauva                 = _yn(habits["Mauva"]),
+                        alcohol               = _yn(habits["Alcohol"]),
+                        brushing_type         = brush_type,
+                        brushing_freq         = brush_freq,
+                        brushing_timing       = brush_time,
+                        medical_history_notes = med_hist_str,
+                        dentition_status      = chart_json,
+                        provisional_diagnosis = prov_diag,
+                        medicines             = meds_str,
+                        dispensed             = "No",
+                        pre_op_image          = pre_filename,
+                        post_op_image         = post_filename,
+                    )
+                    db.add(dental_visit)
+                    db.commit()
+                st.success("✅ Dental Visit & Images Saved Successfully!")
+            except Exception as e:
+                st.error(f"Error saving: {e}")
 
 
 # ========================= RECORDS TAB =========================
